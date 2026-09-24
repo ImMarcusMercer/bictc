@@ -42,7 +42,7 @@ Flutter-generated Android and tool configuration files remain in place. Generate
 
 ## Application Composition
 
-`main.dart` starts a `BICTCApp` widget. `BICTCApp` owns the `MaterialApp`, application title, Material theme, and initial `LandingPage`. No dependency container or global mutable state is needed.
+`main.dart` starts a `BictcApp` widget. `BictcApp` owns the `MaterialApp`, application title, Material theme, and initial `LandingPage`. No dependency container or global mutable state is needed. The user-facing name remains `BICTC`.
 
 The landing page presents:
 
