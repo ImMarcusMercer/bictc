@@ -1,4 +1,5 @@
-import 'package:bictc/features/landing/views/landing_page.dart';
+import 'package:bictc/features/navigation/views/main_shell.dart';
+import 'package:bictc/app/design_system.dart';
 import 'package:flutter/material.dart';
 
 class BictcApp extends StatelessWidget {
@@ -7,16 +8,10 @@ class BictcApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'BICTC',
+      title: 'AccessPH',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF006A60)),
-        filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
-        ),
-        useMaterial3: true,
-      ),
-      home: const LandingPage(),
+      theme: AppDesign.theme,
+      home: const MainShell(),
     );
   }
 }

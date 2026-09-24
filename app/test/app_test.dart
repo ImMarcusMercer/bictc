@@ -3,34 +3,50 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('landing opens the dummy login flow', (tester) async {
+  testWidgets('bottom navigation switches between the three main screens', (
+    tester,
+  ) async {
     await tester.pumpWidget(const BictcApp());
 
-    expect(find.text('BICTC'), findsOneWidget);
-    expect(find.textContaining('accessibility evidence'), findsOneWidget);
+    expect(find.text('SM City North EDSA'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.tap(find.text('For Me'));
+    await tester.pumpAndSettle();
+    expect(find.text('For Me screen'), findsOneWidget);
+
+    await tester.tap(find.text('Community'));
+    await tester.pumpAndSettle();
+    expect(find.text('Community screen'), findsOneWidget);
+  });
+
+  testWidgets('More opens a menu that can be closed', (tester) async {
+    await tester.pumpWidget(const BictcApp());
+
+    await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in to BICTC'), findsOneWidget);
+    expect(find.text('My Needs'), findsOneWidget);
+    expect(find.text('Favorites'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
-    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Close'));
+    await tester.pumpAndSettle();
 
-    expect(find.text('Enter your email.'), findsOneWidget);
-    expect(find.text('Enter your password.'), findsOneWidget);
-
-    await tester.enterText(
-      find.byKey(const Key('email-field')),
-      'person@example.com',
-    );
-    await tester.enterText(
-      find.byKey(const Key('password-field')),
-      'dummy-password',
-    );
-    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
-    await tester.pump();
-
-    expect(find.text("Authentication isn't connected yet."), findsOneWidget);
+    expect(find.text('My Needs'), findsNothing);
+    expect(find.text('SM City North EDSA'), findsOneWidget);
   });
+
+  for (final destination in ['My Needs', 'Favorites', 'Settings']) {
+    testWidgets('More opens the $destination screen', (tester) async {
+      await tester.pumpWidget(const BictcApp());
+
+      await tester.tap(find.text('More'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(destination));
+      await tester.pumpAndSettle();
+
+      expect(find.text('$destination screen'), findsOneWidget);
+      expect(find.byType(BackButton), findsOneWidget);
+    });
+  }
 }

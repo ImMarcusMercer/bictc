@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_map: 8.3.2
+  latlong2: 0.9.1
 
 dev_dependencies:
   flutter_test:
@@ -17,3 +19,13 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  licenses:
+    - assets/fonts/OFL-Outfit.txt
+    - assets/fonts/OFL-Nunito.txt
+  fonts:
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit.ttf
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito.ttf
