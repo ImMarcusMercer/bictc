@@ -1,11 +1,21 @@
 import 'package:bictc/app/design_system.dart';
+import 'package:bictc/features/needs/models/accessibility_need.dart';
 import 'package:bictc/shared/repositories/fixture_places.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+enum DiscoveryMode { places, map }
+
 class DiscoveryHome extends StatefulWidget {
-  const DiscoveryHome({super.key});
+  const DiscoveryHome({
+    required this.mode,
+    required this.selectedNeeds,
+    super.key,
+  });
+
+  final DiscoveryMode mode;
+  final Set<AccessibilityNeed> selectedNeeds;
 
   @override
   State<DiscoveryHome> createState() => _DiscoveryHomeState();
@@ -19,10 +29,10 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
     'Davao',
     'General Santos',
   ];
+
   final _search = TextEditingController();
   String _city = 'Metro Manila';
   PlaceStatus? _status;
-  bool _showMap = false;
 
   @override
   void dispose() {
@@ -32,7 +42,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
 
   List<SamplePlace> get _visiblePlaces {
     final query = _search.text.trim().toLowerCase();
-    return samplePlaces.where((place) {
+    final places = samplePlaces.where((place) {
       return (_city == 'All' || place.city == _city) &&
           (_status == null || place.status == _status) &&
           (query.isEmpty ||
@@ -40,7 +50,13 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
                   .toLowerCase()
                   .contains(query));
     }).toList();
+
+    places.sort((a, b) => _matchCount(b).compareTo(_matchCount(a)));
+    return places;
   }
+
+  int _matchCount(SamplePlace place) =>
+      place.supportedNeeds.intersection(widget.selectedNeeds).length;
 
   void _clearFilters() {
     setState(() {
@@ -58,7 +74,12 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
         _header(),
         _cityFilters(),
         _statusFilters(),
-        Expanded(child: _showMap ? _fullMap(places) : _placeList(places)),
+        _needsContext(),
+        Expanded(
+          child: widget.mode == DiscoveryMode.places
+              ? _placeList(places)
+              : _fullMap(places),
+        ),
       ],
     );
   }
@@ -66,72 +87,60 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
   Widget _header() => ColoredBox(
     color: AppColors.primary,
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: Column(
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runSpacing: 4,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            'AccessPH',
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.titleLarge
-                                ?.copyWith(color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: AppColors.accent,
-                            borderRadius: BorderRadius.all(Radius.circular(6)),
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            child: Text(
-                              'PH',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 6,
+                children: [
+                  Text(
+                    'AccessPH',
+                    style: Theme.of(context).textTheme.titleLarge
+                        ?.copyWith(color: Colors.white),
+                  ),
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: BorderRadius.all(Radius.circular(6)),
                     ),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: Colors.white70,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Text(
+                        'PH',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(width: 3),
-                        Text(
-                          _city == 'All' ? 'All Philippines' : _city,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              _viewToggle(),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 3,
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 15,
+                    color: Colors.white70,
+                  ),
+                  Text(
+                    _city == 'All' ? 'All Philippines' : _city,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TextField(
             key: const Key('place-search'),
             controller: _search,
@@ -161,198 +170,146 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
     ),
   );
 
-  Widget _viewToggle() => DecoratedBox(
-    decoration: BoxDecoration(
-      color: const Color(0xFF3279B7),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final showMap in [false, true])
-          Semantics(
-            button: true,
-            selected: _showMap == showMap,
-            label: showMap ? 'Map view' : 'List view',
-            child: InkWell(
-              onTap: () => setState(() => _showMap = showMap),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: 54,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _showMap == showMap
-                      ? Colors.white
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      showMap ? Icons.map_outlined : Icons.view_list_rounded,
-                      size: 17,
-                      color: _showMap == showMap
-                          ? AppColors.primary
-                          : Colors.white,
-                    ),
-                    Text(
-                      showMap ? 'Map' : 'List',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: _showMap == showMap
-                            ? AppColors.primary
-                            : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-      ],
+  Widget _cityFilters() => ColoredBox(
+    color: Colors.white,
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            for (var index = 0; index < _cities.length; index++) ...[
+              if (index > 0) const SizedBox(width: 7),
+              _cityChip(_cities[index]),
+            ],
+          ],
+        ),
+      ),
     ),
   );
 
-  Widget _cityFilters() => ColoredBox(
-    color: Colors.white,
-    child: SizedBox(
-      height: 60,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: _cities.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 7),
-        itemBuilder: (context, index) {
-          final city = _cities[index];
-          return ChoiceChip(
-            materialTapTargetSize: MaterialTapTargetSize.padded,
-            label: Text(city == 'All' ? 'PH All' : city),
-            selected: _city == city,
-            onSelected: (_) => setState(() => _city = city),
-            showCheckmark: false,
-            selectedColor: AppColors.primary,
-            backgroundColor: Colors.white,
-            labelStyle: TextStyle(
-              color: _city == city ? Colors.white : AppColors.ink,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-            side: BorderSide(
-              color: _city == city ? AppColors.primary : AppColors.border,
-            ),
-            shape: const StadiumBorder(),
-          );
-        },
-      ),
+  Widget _cityChip(String city) => ChoiceChip(
+    materialTapTargetSize: MaterialTapTargetSize.padded,
+    label: Text(city == 'All' ? 'PH All' : city),
+    selected: _city == city,
+    onSelected: (_) => setState(() => _city = city),
+    showCheckmark: false,
+    selectedColor: AppColors.primary,
+    backgroundColor: Colors.white,
+    labelStyle: TextStyle(
+      color: _city == city ? Colors.white : AppColors.ink,
+      fontWeight: FontWeight.w800,
+      fontSize: 12,
     ),
+    side: BorderSide(
+      color: _city == city ? AppColors.primary : AppColors.border,
+    ),
+    shape: const StadiumBorder(),
   );
 
   Widget _statusFilters() {
     final cityPlaces = samplePlaces.where(
-      (p) => _city == 'All' || p.city == _city,
+      (place) => _city == 'All' || place.city == _city,
     );
     final filters = <PlaceStatus?>[null, ...PlaceStatus.values];
-    return SizedBox(
-      height: 62,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: filters.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 7),
-        itemBuilder: (context, index) {
-          final status = filters[index];
-          final selected = _status == status;
-          return FilterChip(
-            materialTapTargetSize: MaterialTapTargetSize.padded,
-            key: Key('status-${status?.name ?? 'all'}'),
-            label: Text(status?.label ?? 'All'),
-            avatar: Icon(
-              status?.icon ?? Icons.circle,
-              size: 16,
-              color: selected
-                  ? Colors.white
-                  : (status?.color ?? AppColors.primary),
-            ),
-            selected: selected,
-            showCheckmark: false,
-            onSelected: (_) => setState(() => _status = status),
-            backgroundColor: Colors.white,
-            selectedColor: AppColors.ink,
-            labelStyle: TextStyle(
-              color: selected ? Colors.white : AppColors.ink,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
-            ),
-            side: BorderSide(
-              color: selected ? AppColors.ink : AppColors.border,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppDesign.controlRadius),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            tooltip: status == null
-                ? 'Show all statuses'
-                : '${status.label}: ${cityPlaces.where((p) => p.status == status).length} sample places',
-          );
-        },
+        child: Row(
+          children: [
+            for (var index = 0; index < filters.length; index++) ...[
+              if (index > 0) const SizedBox(width: 7),
+              _statusChip(filters[index], cityPlaces),
+            ],
+          ],
+        ),
       ),
     );
   }
+
+  Widget _statusChip(PlaceStatus? status, Iterable<SamplePlace> cityPlaces) {
+    final selected = _status == status;
+    return FilterChip(
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      key: Key('status-${status?.name ?? 'all'}'),
+      label: Text(status?.label ?? 'All'),
+      avatar: Icon(
+        status?.icon ?? Icons.circle,
+        size: 16,
+        color: selected ? Colors.white : (status?.color ?? AppColors.primary),
+      ),
+      selected: selected,
+      showCheckmark: false,
+      onSelected: (_) => setState(() => _status = status),
+      backgroundColor: Colors.white,
+      selectedColor: AppColors.ink,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : AppColors.ink,
+        fontWeight: FontWeight.w800,
+        fontSize: 12,
+      ),
+      side: BorderSide(color: selected ? AppColors.ink : AppColors.border),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDesign.controlRadius),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      tooltip: status == null
+          ? 'Show all statuses'
+          : '${status.label}: ${cityPlaces.where((place) => place.status == status).length} sample places',
+    );
+  }
+
+  Widget _needsContext() => ColoredBox(
+    color: const Color(0xFFE8F0FE),
+    child: SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            const Text(
+              'Best Places for You',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 10),
+            if (widget.selectedNeeds.isEmpty)
+              const Text(
+                'Choose needs in More',
+                style: TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            for (final need in widget.selectedNeeds) ...[
+              Chip(
+                avatar: Icon(need.icon, size: 16, color: AppColors.primary),
+                label: Text(need.label),
+                visualDensity: VisualDensity.compact,
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: AppColors.border),
+                labelStyle: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
 
   Widget _placeList(List<SamplePlace> places) => Center(
     child: ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 720),
       child: ListView(
+        key: const Key('places-list'),
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 20),
         children: [
-          SizedBox(
-            height: 138,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppDesign.cardRadius),
-              child: Stack(
-                children: [
-                  _map(places, preview: true),
-                  Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => setState(() => _showMap = true),
-                        child: Align(
-                          alignment: Alignment.bottomRight,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8),
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 7,
-                                ),
-                                child: Text(
-                                  'Open full map',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
           Text(
             '${places.length} ${places.length == 1 ? 'place' : 'places'} found · Sample data',
             style: const TextStyle(
@@ -389,105 +346,147 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
     ),
   );
 
-  Widget _placeCard(SamplePlace place) => Material(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(AppDesign.cardRadius),
-    child: InkWell(
+  Widget _placeCard(SamplePlace place) {
+    final matches = _matchCount(place);
+    return Material(
+      color: Colors.white,
       borderRadius: BorderRadius.circular(AppDesign.cardRadius),
-      onTap: () => _showPlace(place),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppDesign.cardRadius),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          children: [
-            Container(
-              height: 4,
-              decoration: BoxDecoration(
-                color: place.status.color,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppDesign.cardRadius),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppDesign.cardRadius),
+        onTap: () => _showPlace(place),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppDesign.cardRadius),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            children: [
+              Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  color: place.status.color,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(AppDesign.cardRadius),
+                  ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F0FE),
-                      borderRadius: BorderRadius.circular(14),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F0FE),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        place.icon,
+                        color: AppColors.primary,
+                        size: 27,
+                      ),
                     ),
-                    child: Icon(place.icon, color: AppColors.primary, size: 27),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            place.name,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontSize: 15),
+                          ),
+                          Text(
+                            '${place.category} · ${place.area}',
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 5,
+                            children: [
+                              _statusBadge(place.status),
+                              if (widget.selectedNeeds.isNotEmpty)
+                                _matchBadge(matches),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: AppColors.muted),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.border),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
+                child: Wrap(
+                  spacing: 10,
+                  runSpacing: 2,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        Text(
-                          place.name,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontSize: 15),
+                        const Icon(
+                          Icons.groups_outlined,
+                          size: 14,
+                          color: AppColors.muted,
                         ),
+                        const SizedBox(width: 4),
                         Text(
-                          '${place.category} · ${place.area}',
+                          '${place.reports} sample reports',
                           style: const TextStyle(
                             color: AppColors.muted,
-                            fontSize: 12,
+                            fontSize: 11,
                           ),
                         ),
-                        const SizedBox(height: 5),
-                        _statusBadge(place.status),
                       ],
                     ),
-                  ),
-                  const Icon(Icons.chevron_right, color: AppColors.muted),
-                ],
-              ),
-            ),
-            const Divider(height: 1, color: AppColors.border),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              child: Wrap(
-                spacing: 10,
-                runSpacing: 2,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.groups_outlined,
-                        size: 14,
+                    Text(
+                      'Updated ${place.updated}',
+                      style: const TextStyle(
                         color: AppColors.muted,
+                        fontSize: 11,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${place.reports} sample reports',
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    'Updated ${place.updated}',
-                    style: const TextStyle(
-                      color: AppColors.muted,
-                      fontSize: 11,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _matchBadge(int matches) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: AppColors.primary.withValues(alpha: 0.08),
+      border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        const Icon(Icons.auto_awesome, size: 13, color: AppColors.primary),
+        const SizedBox(width: 4),
+        Text(
+          '$matches of ${widget.selectedNeeds.length} needs',
+          style: const TextStyle(
+            color: AppColors.primary,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     ),
   );
 
@@ -498,8 +497,8 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
       border: Border.all(color: status.color.withValues(alpha: 0.35)),
       borderRadius: BorderRadius.circular(20),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
+    child: Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Icon(status.icon, size: 13, color: status.color),
         const SizedBox(width: 4),
@@ -516,6 +515,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
   );
 
   Widget _fullMap(List<SamplePlace> places) => Stack(
+    key: const Key('full-map'),
     children: [
       _map(places),
       Positioned(
@@ -525,13 +525,13 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             child: Text(
-              '${places.length} sample places',
+              _mapSummary(places),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
             ),
           ),
         ),
       ),
-      Positioned(
+      const Positioned(
         bottom: 32,
         left: 10,
         right: 10,
@@ -539,12 +539,12 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: AppColors.primary,
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.all(Radius.circular(30)),
             ),
-            child: const Padding(
+            child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               child: Text(
-                'Map needs internet · List works offline',
+                'Map needs internet · Places works offline',
                 style: TextStyle(color: Colors.white, fontSize: 11),
               ),
             ),
@@ -554,7 +554,13 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
     ],
   );
 
-  Widget _map(List<SamplePlace> places, {bool preview = false}) {
+  String _mapSummary(List<SamplePlace> places) {
+    if (widget.selectedNeeds.isEmpty) return '${places.length} sample places';
+    final matches = places.where((place) => _matchCount(place) > 0).length;
+    return '$matches of ${places.length} match selected needs';
+  }
+
+  Widget _map(List<SamplePlace> places) {
     final center = switch (_city) {
       'Cebu' => const LatLng(10.3157, 123.8854),
       'Davao' => const LatLng(7.1907, 125.4553),
@@ -563,13 +569,10 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
       _ => const LatLng(14.5995, 121.0000),
     };
     return FlutterMap(
-      key: ValueKey('$_city-${preview ? 'preview' : 'full'}'),
+      key: ValueKey(_city),
       options: MapOptions(
         initialCenter: center,
         initialZoom: _city == 'All' ? 5.3 : 11.3,
-        interactionOptions: InteractionOptions(
-          flags: preview ? InteractiveFlag.none : InteractiveFlag.all,
-        ),
       ),
       children: [
         TileLayer(
@@ -584,17 +587,32 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
             for (final place in places)
               Marker(
                 point: place.position,
-                width: 44,
-                height: 46,
+                width: 46,
+                height: 48,
                 child: Semantics(
-                  label: '${place.name}, ${place.status.label}',
-                  button: !preview,
+                  label:
+                      '${place.name}, ${place.status.label}, ${_matchCount(place)} selected needs matched',
+                  button: true,
                   child: GestureDetector(
-                    onTap: preview ? null : () => _showPlace(place),
-                    child: Icon(
-                      Icons.location_pin,
-                      size: 42,
-                      color: place.status.color,
+                    onTap: () => _showPlace(place),
+                    child: Stack(
+                      alignment: Alignment.topCenter,
+                      children: [
+                        Icon(
+                          Icons.location_pin,
+                          size: 44,
+                          color: place.status.color,
+                        ),
+                        if (_matchCount(place) > 0)
+                          const Positioned(
+                            top: 5,
+                            child: Icon(
+                              Icons.star,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -619,6 +637,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
   }
 
   void _showPlace(SamplePlace place) {
+    final matches = _matchCount(place);
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -636,7 +655,14 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
                 style: const TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 14),
-              _statusBadge(place.status),
+              Wrap(
+                spacing: 6,
+                runSpacing: 5,
+                children: [
+                  _statusBadge(place.status),
+                  if (widget.selectedNeeds.isNotEmpty) _matchBadge(matches),
+                ],
+              ),
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -655,7 +681,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
               ),
               const SizedBox(height: 12),
               const Text(
-                'Preview data only. Check current, detailed evidence before planning a visit.',
+                'Recommendation matches are based on sample feature tags. Check current, detailed evidence before planning a visit.',
                 style: TextStyle(color: AppColors.muted, fontSize: 12),
               ),
             ],

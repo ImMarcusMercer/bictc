@@ -6,6 +6,10 @@ abstract final class AppColors {
   static const primaryDark = Color(0xFF004080);
   static const accent = Color(0xFFCE1126);
   static const background = Color(0xFFF2F5F9);
+  static const splashBackground = Color(0xFFF7F9FC);
+  static const splashPrimary = Color(0xFF2457A6);
+  static const splashAccent = Color(0xFF2A8C82);
+  static const splashInk = Color(0xFF172033);
   static const card = Colors.white;
   static const border = Color(0xFFD4DDE8);
   static const ink = Color(0xFF0F1F2E);

@@ -1,4 +1,6 @@
 import 'package:bictc/features/discovery/views/discovery_home.dart';
+import 'package:bictc/features/needs/models/accessibility_need.dart';
+import 'package:bictc/features/needs/views/accessibility_needs_screen.dart';
 import 'package:flutter/material.dart';
 
 class MainShell extends StatefulWidget {
@@ -9,19 +11,25 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  static const _screenNames = ['Map', 'For Me', 'Community'];
-
   int _selectedIndex = 0;
+  Set<AccessibilityNeed> _selectedNeeds = {};
 
   @override
   Widget build(BuildContext context) {
-    final screenName = _screenNames[_selectedIndex];
-
     return Scaffold(
-      appBar: _selectedIndex == 0 ? null : AppBar(title: Text(screenName)),
-      body: _selectedIndex == 0
-          ? const SafeArea(child: DiscoveryHome())
-          : Center(child: Text('$screenName screen')),
+      appBar: _selectedIndex == 2
+          ? AppBar(title: const Text('Community'))
+          : null,
+      body: _selectedIndex < 2
+          ? SafeArea(
+              child: DiscoveryHome(
+                mode: _selectedIndex == 0
+                    ? DiscoveryMode.places
+                    : DiscoveryMode.map,
+                selectedNeeds: _selectedNeeds,
+              ),
+            )
+          : const Center(child: Text('Community screen')),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) {
@@ -34,14 +42,14 @@ class _MainShellState extends State<MainShell> {
         },
         destinations: const [
           NavigationDestination(
+            icon: Icon(Icons.place_outlined),
+            selectedIcon: Icon(Icons.place),
+            label: 'Places',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.map_outlined),
             selectedIcon: Icon(Icons.map),
             label: 'Map',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.star_outline),
-            selectedIcon: Icon(Icons.star),
-            label: 'For Me',
           ),
           NavigationDestination(
             icon: Icon(Icons.people_outline),
@@ -63,6 +71,18 @@ class _MainShellState extends State<MainShell> {
 
     if (!mounted || destination == null) return;
 
+    if (destination == 'My Needs') {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => AccessibilityNeedsScreen(
+            initialNeeds: _selectedNeeds,
+            onSaved: (needs) => setState(() => _selectedNeeds = needs),
+          ),
+        ),
+      );
+      return;
+    }
+
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => _EmptyScreen(title: destination),
@@ -77,41 +97,43 @@ class _MoreMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _MoreMenuItem(
-              icon: Icons.accessible,
-              label: 'My Needs',
-              onTap: () => Navigator.pop(context, 'My Needs'),
-            ),
-            _MoreMenuItem(
-              icon: Icons.favorite,
-              label: 'Favorites',
-              onTap: () => Navigator.pop(context, 'Favorites'),
-            ),
-            _MoreMenuItem(
-              icon: Icons.settings,
-              label: 'Settings',
-              onTap: () => Navigator.pop(context, 'Settings'),
-            ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
-              child: Text(
-                'AccessPH v1.0 - For PWDs across the Philippines',
-                style: TextStyle(fontSize: 12),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _MoreMenuItem(
+                icon: Icons.accessible,
+                label: 'My Needs',
+                onTap: () => Navigator.pop(context, 'My Needs'),
               ),
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Close'),
+              _MoreMenuItem(
+                icon: Icons.favorite,
+                label: 'Favorites',
+                onTap: () => Navigator.pop(context, 'Favorites'),
               ),
-            ),
-          ],
+              _MoreMenuItem(
+                icon: Icons.settings,
+                label: 'Settings',
+                onTap: () => Navigator.pop(context, 'Settings'),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text(
+                  'AccessPH v1.0 - For PWDs across the Philippines',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

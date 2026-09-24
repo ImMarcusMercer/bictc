@@ -1,3 +1,4 @@
+import 'package:bictc/features/needs/models/accessibility_need.dart';
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -15,6 +16,7 @@ class SamplePlace {
     required this.reports,
     required this.updated,
     required this.icon,
+    required this.supportedNeeds,
   });
 
   final String name;
@@ -27,6 +29,7 @@ class SamplePlace {
   final int reports;
   final String updated;
   final IconData icon;
+  final Set<AccessibilityNeed> supportedNeeds;
 }
 
 /// Visual fixtures adapted from docs/figma structure/src/data.ts.
@@ -43,6 +46,16 @@ const samplePlaces = <SamplePlace>[
     reports: 214,
     updated: 'Sep 2026',
     icon: Icons.storefront_outlined,
+    supportedNeeds: {
+      AccessibilityNeed.wheelchair,
+      AccessibilityNeed.visual,
+      AccessibilityNeed.hearing,
+      AccessibilityNeed.walker,
+      AccessibilityNeed.senior,
+      AccessibilityNeed.cognitive,
+      AccessibilityNeed.sensory,
+      AccessibilityNeed.chronic,
+    },
   ),
   SamplePlace(
     name: 'Robinsons Galleria',
@@ -55,6 +68,13 @@ const samplePlaces = <SamplePlace>[
     reports: 178,
     updated: 'Aug 2026',
     icon: Icons.storefront_outlined,
+    supportedNeeds: {
+      AccessibilityNeed.wheelchair,
+      AccessibilityNeed.hearing,
+      AccessibilityNeed.walker,
+      AccessibilityNeed.senior,
+      AccessibilityNeed.chronic,
+    },
   ),
   SamplePlace(
     name: 'Philippine General Hospital',
@@ -67,6 +87,15 @@ const samplePlaces = <SamplePlace>[
     reports: 312,
     updated: 'Sep 2026',
     icon: Icons.local_hospital_outlined,
+    supportedNeeds: {
+      AccessibilityNeed.wheelchair,
+      AccessibilityNeed.visual,
+      AccessibilityNeed.hearing,
+      AccessibilityNeed.walker,
+      AccessibilityNeed.senior,
+      AccessibilityNeed.cognitive,
+      AccessibilityNeed.chronic,
+    },
   ),
   SamplePlace(
     name: 'SM Megamall',
@@ -79,6 +108,15 @@ const samplePlaces = <SamplePlace>[
     reports: 267,
     updated: 'Sep 2026',
     icon: Icons.storefront_outlined,
+    supportedNeeds: {
+      AccessibilityNeed.wheelchair,
+      AccessibilityNeed.visual,
+      AccessibilityNeed.hearing,
+      AccessibilityNeed.walker,
+      AccessibilityNeed.senior,
+      AccessibilityNeed.sensory,
+      AccessibilityNeed.chronic,
+    },
   ),
   SamplePlace(
     name: 'Ayala Malls Manila Bay',
@@ -91,6 +129,16 @@ const samplePlaces = <SamplePlace>[
     reports: 143,
     updated: 'Aug 2026',
     icon: Icons.storefront_outlined,
+    supportedNeeds: {
+      AccessibilityNeed.wheelchair,
+      AccessibilityNeed.visual,
+      AccessibilityNeed.hearing,
+      AccessibilityNeed.walker,
+      AccessibilityNeed.senior,
+      AccessibilityNeed.cognitive,
+      AccessibilityNeed.sensory,
+      AccessibilityNeed.chronic,
+    },
   ),
   SamplePlace(
     name: 'SM City Cebu',
@@ -103,6 +151,13 @@ const samplePlaces = <SamplePlace>[
     reports: 231,
     updated: 'Sep 2026',
     icon: Icons.storefront_outlined,
+    supportedNeeds: {
+      AccessibilityNeed.wheelchair,
+      AccessibilityNeed.visual,
+      AccessibilityNeed.walker,
+      AccessibilityNeed.senior,
+      AccessibilityNeed.chronic,
+    },
   ),
   SamplePlace(
     name: 'SM City Davao',
@@ -115,6 +170,14 @@ const samplePlaces = <SamplePlace>[
     reports: 197,
     updated: 'Sep 2026',
     icon: Icons.storefront_outlined,
+    supportedNeeds: {
+      AccessibilityNeed.wheelchair,
+      AccessibilityNeed.hearing,
+      AccessibilityNeed.walker,
+      AccessibilityNeed.senior,
+      AccessibilityNeed.sensory,
+      AccessibilityNeed.chronic,
+    },
   ),
   SamplePlace(
     name: 'Mindanao Central Hospital',
@@ -127,5 +190,6 @@ const samplePlaces = <SamplePlace>[
     reports: 38,
     updated: 'Apr 2026',
     icon: Icons.local_hospital_outlined,
+    supportedNeeds: {AccessibilityNeed.hearing, AccessibilityNeed.cognitive},
   ),
 ];

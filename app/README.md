@@ -1,6 +1,6 @@
-# AccessPH Flutter app
+# Access Able PH Flutter app
 
-The Map/Home screen is the app's first screen. It follows the layout in [`docs/figma structure`](../docs/figma%20structure): a blue search header, city and status filters, a list/map switch, a map preview, place cards, and bottom navigation. Flutter's Material icons replace the prototype's emoji icons.
+The splash screen is the app's entry screen, followed by the Places and Map discovery tabs. Both discovery views follow the visual language in [`docs/figma structure`](../docs/figma%20structure): a blue search header, city and status filters, personalized need tags, and bottom navigation. Places contains the card list; Map uses the remaining content area for the interactive map. Flutter's Material icons replace the prototype's emoji icons.
 
 ## Global design config
 
@@ -8,10 +8,14 @@ The Map/Home screen is the app's first screen. It follows the layout in [`docs/f
 
 | Token | Value | Use |
 | --- | --- | --- |
-| Primary | `#005BAA` | Header, selected city, actions, map button |
+| Primary | `#005BAA` | Header, selected city, navigation, and actions |
 | Primary dark | `#004080` | Darker brand variant |
 | Accent | `#CE1126` | PH brand tag |
 | Background | `#F2F5F9` | Screen canvas |
+| Splash background | `#F7F9FC` | Calm startup canvas |
+| Splash primary | `#2457A6` | Splash logo |
+| Splash accent | `#2A8C82` | Splash loading indicators |
+| Splash ink | `#172033` | Splash title and loading label |
 | Card | `#FFFFFF` | Cards and controls |
 | Border | `#D4DDE8` | Dividers and outlines |
 | Ink | `#0F1F2E` | Main text and selected status filter |
@@ -26,13 +30,23 @@ The Map/Home screen is the app's first screen. It follows the layout in [`docs/f
 - **Accessibility:** Keep semantic labels on map markers, use text alongside status colors, preserve scrolling at large text sizes, and make the list available without map connectivity or location permission.
 - **Result language:** The status chips on this screen are sample browse labels. Personalized results must use the four outcomes in `docs/project-structure-and-flow.md` and cite actual evidence when the backend is connected.
 
-## Map/Home implementation
+## Splash implementation
 
-[`lib/features/discovery/views/discovery_home.dart`](lib/features/discovery/views/discovery_home.dart) owns search, city/status filtering, list/map switching, empty state, and the place summary sheet. [`lib/shared/repositories/fixture_places.dart`](lib/shared/repositories/fixture_places.dart) contains **sample data only**, adapted from the Figma reference. The screen labels its counts as sample data; no status or report count is a live or certified accessibility claim. Selecting a place opens its sample address and summary. The other main tabs remain placeholders.
+[`lib/features/splash/views/splash_screen.dart`](lib/features/splash/views/splash_screen.dart) owns the startup presentation and transition. It displays the accessibility/location logo, **Access Able PH**, the **Accessibility within reach** tagline, and indeterminate circular and linear progress indicators with screen-reader labels. The layout scrolls when needed and constrains its width on larger displays.
+
+The splash stays visible only while its injected startup task is pending. If startup fails, it announces an error and offers a retry. The current app task waits for Flutter's first rendered frame and then opens Places without an artificial delay. Add local settings, Supabase, session, or configuration initialization to that task when those integrations exist; do not show a fake percentage.
+
+## Places, Map, and needs implementation
+
+[`lib/features/discovery/views/discovery_home.dart`](lib/features/discovery/views/discovery_home.dart) owns the shared search, city/status filtering, recommendation context, empty state, and place summary sheet. Bottom navigation presents **Places**, **Map**, **Community**, and **More**, in that order. Places renders cards without a map preview. Map renders an interactive full map without place cards or an extra list/map toggle. Search, city filters, status filters, and selected need tags are available in both discovery views.
+
+[`lib/features/needs/views/accessibility_needs_screen.dart`](lib/features/needs/views/accessibility_needs_screen.dart) provides the multi-select **My Accessibility Needs** screen from More. The current fixture build starts with no assumed needs and keeps edits in the app session. The selected needs rank Places cards by the number of matching fixture tags and add a star to matching map pins. These match hints are recommendations only. The evidence status remains visually and semantically separate.
+
+[`lib/shared/repositories/fixture_places.dart`](lib/shared/repositories/fixture_places.dart) contains **sample data only**, adapted from the Figma reference. The screens label their counts as sample data; no status, report count, supported-need tag, or recommendation is a live or certified accessibility claim. Selecting a place opens its sample address and summary. Community, Favorites, and Settings remain placeholders.
 
 The interactive map uses `flutter_map` with OpenStreetMap tiles. The list and search work without network access or location permission. Map tiles need internet; the map keeps OpenStreetMap attribution visible. The Android app declares internet permission. The tile URL defaults to the public OpenStreetMap server and can be changed at build time with `--dart-define=MAP_TILE_URL=https://your-tile-server/{z}/{x}/{y}.png`. Before public distribution, choose a tile provider suitable for expected traffic and follow its usage terms. The OpenStreetMap default uses the app ID as its user agent and `flutter_map`'s built-in tile cache.
 
-When a shared data contract and backend read model exist, replace the fixture source with a repository adapter under `lib/shared/repositories/`. Keep Supabase calls out of widgets. Do not derive personalized accessibility assessments from these browse labels.
+When a shared data contract and backend read model exist, replace the fixture source with a repository adapter under `lib/shared/repositories/`. Keep Supabase calls out of widgets. Persist needs on device by default and use the assessment contract for evidence-linked results. Do not derive personalized accessibility assessments from browse labels or recommendation matches.
 
 ## Run and check
 

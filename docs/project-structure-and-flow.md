@@ -19,7 +19,7 @@ The Flutter client uses a publishable key and authorization is enforced with Row
 │   │   ├── app/                         # Routing, theme, accessibility settings
 │   │   ├── features/
 │   │   │   ├── needs/                   # Select accessibility needs
-│   │   │   ├── discovery/               # Home, map/list, search
+│   │   │   ├── discovery/               # Places, full map, and shared search
 │   │   │   ├── establishments/          # Profile and feature details
 │   │   │   ├── assessment/              # Personalized result and evidence
 │   │   │   └── reports/                 # Read, submit, confirm, flag, dispute
@@ -50,15 +50,16 @@ This is a **target layout**; create folders as working files are added. The exis
 
 | Section | User action | Information to show |
 | --- | --- | --- |
+| Splash / Startup | Open the app while required startup work completes | App identity, a calm non-numeric loading state, and an accessible retry state if startup fails; no sign-in or permission prompt |
 | Needs | Select practical access requirements | Selected needs and a way to change them later; do not infer a diagnosis |
-| Home / Map | Search nearby establishments or browse a list | Name, location, service type, and evidence freshness; list works without location permission |
+| Places / Map | Search and filter either a card list or a full map | The same city, status, and selected-needs context in both tabs; recommendation matches stay separate from evidence status, and Places works without location permission |
 | Establishment | Open a place | Address, offered services, evidence summary, and last observation date |
 | Accessibility Details | Inspect entrance, ramp, doors, pathways, elevators/stairs, toilets, parking/drop-off, waiting area, counters, and route to the service area | Feature status, measurements with units, photos, source, verification state, and unknowns |
 | Assessment | Read a result for selected needs | Result, main barrier, limitations, missing evidence, and links to supporting reports |
 | Community Reports | Read or contribute evidence | Submit a report/photo, confirm a report, flag outdated or incorrect data, or dispute it |
 
 ```text
-Select needs -> Search/map or list -> Establishment -> Accessibility details
+App launch -> Splash/startup -> Select needs -> Places list or full Map -> Establishment -> Accessibility details
             -> Personalized assessment -> Community reports/actions
             -> New evidence refreshes details and assessment
 ```

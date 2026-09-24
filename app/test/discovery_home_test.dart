@@ -1,12 +1,13 @@
-import 'package:bictc/app/bictc_app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'test_helpers.dart';
 
 void main() {
   testWidgets('search and status filters narrow the sample places', (
     tester,
   ) async {
-    await tester.pumpWidget(const BictcApp());
+    await pumpBictcApp(tester);
 
     expect(find.text('SM City North EDSA'), findsOneWidget);
     await tester.enterText(find.byKey(const Key('place-search')), 'hospital');
@@ -23,7 +24,7 @@ void main() {
   testWidgets('clear filters restores places after an empty search', (
     tester,
   ) async {
-    await tester.pumpWidget(const BictcApp());
+    await pumpBictcApp(tester);
     await tester.enterText(
       find.byKey(const Key('place-search')),
       'no such place',
@@ -45,11 +46,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const BictcApp());
+    await pumpBictcApp(tester);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Map').first);
+    expect(find.byType(SegmentedButton<bool>), findsNothing);
+    expect(find.text('Open full map'), findsNothing);
+    await tester.tap(find.text('Map').last);
     await tester.pump();
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('sample places'), findsWidgets);
+    expect(find.byKey(const Key('full-map')), findsOneWidget);
+    expect(find.byKey(const Key('places-list')), findsNothing);
+    expect(find.byKey(const Key('place-search')), findsOneWidget);
+    expect(find.textContaining('sample places'), findsOneWidget);
   });
 }
