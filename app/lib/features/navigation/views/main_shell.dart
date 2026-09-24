@@ -4,7 +4,16 @@ import 'package:bictc/features/needs/views/accessibility_needs_screen.dart';
 import 'package:flutter/material.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  const MainShell({
+    required this.initialNeeds,
+    required this.showNeedsOnLaunch,
+    required this.onNeedsSaved,
+    super.key,
+  });
+
+  final Set<AccessibilityNeed> initialNeeds;
+  final bool showNeedsOnLaunch;
+  final Future<void> Function(Set<AccessibilityNeed>) onNeedsSaved;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -12,10 +21,19 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
-  Set<AccessibilityNeed> _selectedNeeds = {};
+  late Set<AccessibilityNeed> _selectedNeeds = {...widget.initialNeeds};
+  late bool _showNeedsOnLaunch = widget.showNeedsOnLaunch;
 
   @override
   Widget build(BuildContext context) {
+    if (_showNeedsOnLaunch) {
+      return AccessibilityNeedsScreen(
+        initialNeeds: _selectedNeeds,
+        onSaved: _saveNeeds,
+        popOnSave: false,
+      );
+    }
+
     return Scaffold(
       appBar: _selectedIndex == 2
           ? AppBar(title: const Text('Community'))
@@ -76,7 +94,7 @@ class _MainShellState extends State<MainShell> {
         MaterialPageRoute<void>(
           builder: (context) => AccessibilityNeedsScreen(
             initialNeeds: _selectedNeeds,
-            onSaved: (needs) => setState(() => _selectedNeeds = needs),
+            onSaved: _saveNeeds,
           ),
         ),
       );
@@ -88,6 +106,15 @@ class _MainShellState extends State<MainShell> {
         builder: (context) => _EmptyScreen(title: destination),
       ),
     );
+  }
+
+  Future<void> _saveNeeds(Set<AccessibilityNeed> needs) async {
+    await widget.onNeedsSaved(needs);
+    if (!mounted) return;
+    setState(() {
+      _selectedNeeds = {...needs};
+      _showNeedsOnLaunch = false;
+    });
   }
 }
 

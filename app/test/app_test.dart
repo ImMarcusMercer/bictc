@@ -1,23 +1,45 @@
 import 'package:bictc/app/bictc_app.dart';
+import 'package:bictc/features/needs/models/accessibility_need.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'test_helpers.dart';
 
 void main() {
-  testWidgets('app enters through splash before showing Places', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const BictcApp());
+  testWidgets('first launch opens My Needs after the splash', (tester) async {
+    final store = MemoryAccessibilityNeedsStore(onboardingCompleted: false);
+    await tester.pumpWidget(BictcApp(needsStore: store));
 
     expect(find.text('Access Able PH'), findsOneWidget);
-    expect(find.text('SM City North EDSA'), findsNothing);
+    expect(find.text('My Accessibility Needs'), findsNothing);
 
     await tester.pump();
     await tester.pump();
 
     expect(find.text('Access Able PH'), findsNothing);
+    expect(find.text('My Accessibility Needs'), findsOneWidget);
+    expect(find.text('SM City North EDSA'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('need-wheelchair')));
+    await tester.pump();
+    await tester.tap(find.text('Save My Needs'));
+    await tester.pumpAndSettle();
+
     expect(find.text('SM City North EDSA'), findsOneWidget);
+    expect(store.onboardingCompleted, isTrue);
+    expect(store.needs, {AccessibilityNeed.wheelchair});
+  });
+
+  testWidgets('later launches restore needs and open Places', (tester) async {
+    final store = MemoryAccessibilityNeedsStore(
+      needs: {AccessibilityNeed.visual},
+    );
+
+    await pumpBictcApp(tester, needsStore: store);
+
+    expect(find.text('My Accessibility Needs'), findsNothing);
+    expect(find.text('SM City North EDSA'), findsOneWidget);
+    expect(find.text('Visual'), findsOneWidget);
   });
 
   testWidgets('bottom navigation orders Places before Map', (tester) async {
@@ -71,7 +93,8 @@ void main() {
   testWidgets('My Needs updates recommendations on Places and Map', (
     tester,
   ) async {
-    await pumpBictcApp(tester);
+    final store = MemoryAccessibilityNeedsStore();
+    await pumpBictcApp(tester, needsStore: store);
 
     expect(find.text('Best Places for You'), findsOneWidget);
     expect(find.text('Choose needs in More'), findsOneWidget);
@@ -95,6 +118,10 @@ void main() {
     expect(find.text('Wheelchair'), findsOneWidget);
     expect(find.text('Visual'), findsOneWidget);
     expect(find.text('2 of 2 needs'), findsWidgets);
+    expect(store.needs, {
+      AccessibilityNeed.visual,
+      AccessibilityNeed.wheelchair,
+    });
     await tester.tap(find.text('Map').last);
     await tester.pump();
     expect(find.byKey(const Key('full-map')), findsOneWidget);
@@ -122,6 +149,23 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.scrollUntilVisible(find.byKey(const Key('need-chronic')), 240);
     expect(tester.takeException(), isNull);
+    expect(find.text('Save My Needs'), findsOneWidget);
+  });
+
+  testWidgets('My Needs announces a local save failure', (tester) async {
+    final store = MemoryAccessibilityNeedsStore(failOnSave: true);
+    await pumpBictcApp(tester, needsStore: store);
+    await tester.tap(find.text('More'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('My Needs'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save My Needs'));
+    await tester.pump();
+
+    final error = find.byKey(const Key('save-needs-error'));
+    expect(error, findsOneWidget);
+    expect(tester.widget<Semantics>(error).properties.liveRegion, isTrue);
     expect(find.text('Save My Needs'), findsOneWidget);
   });
 }
