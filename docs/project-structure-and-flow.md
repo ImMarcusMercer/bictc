@@ -1,6 +1,12 @@
-# PWD Accessibility App: Structure and Development Flow
+# Phase 1: PWD Accessibility App Flow and Structure
+
+This document defines the Phase 1 app flow, target structure, and delivery order. It is the planning baseline for iterative implementation; proposed screens and backend capabilities are not necessarily implemented yet.
+
+**Current priority (2026-09-24): voice-to-voice assistance.** Verified PWD or elderly users select **Call** to request human help through a simple community popup, then connect to a responder using LiveKit audio. This takes priority over further More-menu development. See [voice assistance flow and compatibility](voice-assistance-flow.md) for the proposed design and remaining decisions.
 
 ## Product goal
+
+The immediate goal is to connect a verified PWD or elderly caller with a human helper through voice. Requests use ordinary notifications, with no incoming-call takeover or automatic microphone activation. The accessibility discovery experience below remains a supporting capability.
 
 A Flutter app helps people with disabilities judge whether an establishment's **entrance, route, facilities, and actual service area** meet their selected accessibility needs. Community evidence drives the result. AI suggests possible findings from photos but does not certify accessibility or replace human verification. The project supports SDG 10 and SDG 11.
 
@@ -9,6 +15,8 @@ A Flutter app helps people with disabilities judge whether an establishment's **
 **Supabase is the complete application backend.** Flutter uses `supabase_flutter` to access Supabase Auth, Postgres through the Data API, Storage, and Edge Functions. There is no separate `backend/` application or custom REST server. Postgres migrations are the source of truth for the schema and access policies. Edge Functions handle server-only work such as image analysis and any operation that needs a secret. A third-party AI model, if selected later, is called only from an Edge Function; its credentials never go into Flutter.
 
 The Flutter client uses a publishable key and authorization is enforced with Row Level Security (RLS). Secret or service-role keys belong only in Supabase server-side secrets. Browsing can be public; submitting or reviewing reports requires Supabase Auth. Accessibility needs stay on the device by default and are sent only as inputs when calculating a result.
+
+For voice assistance, Supabase owns Auth, trusted verification, request state, notification records, and room-token authorization. **LiveKit is the external realtime audio transport**; audio travels directly between Flutter and LiveKit. Supabase Realtime delivers foreground popups; background delivery additionally needs a push provider such as FCM. These integrations are proposed, not yet implemented.
 
 ## Proposed repository layout
 
@@ -65,6 +73,20 @@ App launch -> Splash/startup -> Select needs -> Places list or full Map -> Estab
 ```
 
 Use clear text and icons alongside color for every status. Show loading, empty, error, and offline states for data-driven screens. Public browsing should not force sign-in; prompt for sign-in when a user begins a contribution.
+
+## More menu and Supabase flow
+
+The **More -> My Needs, Favorites, Settings** work is deferred while voice assistance becomes the priority. The Supabase connection foundation is implemented; the feature behavior below is planned.
+
+| Destination | Planned flow | Storage and access |
+| --- | --- | --- |
+| My Needs | Select functional access requirements, save them, and edit them later | On-device by default; no sign-in required. Send selected codes only when requesting an assessment. Do not create a public needs profile. |
+| Favorites | Browse saved establishments; sign in when enabling account-backed saving | Account-scoped Supabase records referencing real establishment UUIDs, protected by owner-only RLS. Define the table contract and migration before implementing sync. |
+| Settings | Manage local preferences and account actions | Device preferences remain local; sign-in, session state, and sign-out use Supabase Auth through a repository adapter. Community contributions now connect email/password sign-in and sign-out; Settings account actions remain planned. |
+
+Connection flow: build-time `.env` values -> configuration validation -> Supabase initialization in the repository layer -> app shell -> feature repository operations as they are implemented. Public browsing remains available without sign-in. With both config values empty, the app opens its existing sample-data preview. Invalid or partial configuration shows a recoverable startup failure; it does not silently imply a live connection. Initialization itself is not a remote health check.
+
+`app/.env` is ignored by Git; `app/.env.example` lists the required project URL and publishable key. Load it with `flutter run --dart-define-from-file=.env` from `app/`. These are client-visible values, not server secrets. Configuration changes need a full restart/rebuild. See [the connection contract](../contracts/data-contract.md) for the current boundary and prerequisites for Favorites sync.
 
 ## Supabase data model and ownership
 
@@ -137,13 +159,25 @@ Use branches such as `frontend/assessment-screen` and `supabase/assessment-rpc`.
 
 ## Delivery order
 
+### Current priority: voice assistance
+
+1. Connect Supabase Auth and define the trusted verification process. Finalize the voice request contract and responder-selection policy.
+2. Implement request creation, cancellation, expiry, durable notifications, private Realtime channels, and atomic responder selection with RLS tests.
+3. Add server-issued LiveKit tokens and an audio-only Flutter session. Verify two clients can connect, mute, end, and recover from disconnection.
+4. Add ordinary background push notifications and stale-request handling. Foreground-only delivery is an intermediate milestone.
+5. Test verification bypass, simultaneous responders, denied permissions, duplicate events, and call cleanup before release.
+
+The voice milestone is **verified caller -> Call -> community popup -> responder accepts -> two-way audio -> end**. Verification method and one-to-one versus group response remain open decisions in the [voice design](voice-assistance-flow.md).
+
+### Supporting accessibility roadmap
+
 1. **Shared foundation:** agree on need codes, feature types, result meanings, example rows, Auth requirement for contributions, and the first data contract. Initialize `app/` and `supabase/` independently.
 2. **Read-only journey:** frontend builds needs, list/map, profile, details, and assessment from fixtures. Supabase developer builds establishments, services, evidence view, RLS, seed data, and assessment RPC.
 3. **Connect:** replace the fixture repository with `supabase_flutter` calls. Verify a user can browse and get an evidence-linked personalized result without signing in.
 4. **Community evidence:** add Auth, report/photo upload, confirmations, flags, disputes, and policy tests.
 5. **AI assistance:** add Edge Function photo analysis, distinct AI labels, failure handling, and human review. Add Realtime only if the product needs immediate cross-device updates.
 
-The first shared milestone is **select needs -> find a place -> inspect evidence -> see a traceable personal result** using real Supabase data.
+The supporting discovery milestone remains **select needs -> find a place -> inspect evidence -> see a traceable personal result** using real Supabase data, after the voice assistance priority.
 
 ## Supabase references
 
@@ -153,3 +187,17 @@ The first shared milestone is **select needs -> find a place -> inspect evidence
 - [Storage access control](https://supabase.com/docs/guides/storage/security/access-control)
 - [Edge Functions](https://supabase.com/docs/guides/functions)
 - [Edge Function secrets](https://supabase.com/docs/guides/functions/secrets)
+
+## Community reports implementation
+
+The Community tab now has a public report feed with city/access filters, pagination, pull-to-refresh, helpful counts, and issue/good-access submission forms. Sample mode shows labeled, read-only fixtures. Live mode calls the repository adapter and never replaces failed network reads with sample reports. Loading, empty, photo failure, and offline/error states are explicit.
+
+For this module, **any non-anonymous signed-in account can contribute**; no manual verification or extra email-confirmation check is required. Guests can only read. Existing users sign in with email/password from the Community contribution prompt and can sign out from its header. The account requirement does not make their reports community verified: every new observation is `user_reported` and `unverified`. Helpful votes are not confirmations or certification.
+
+The current form records a public display name, free-text establishment name, city, observed access, observation date, description, and one optional photo. These observations do not yet drive personalized assessments or link to fixture establishment IDs. Photos are private Storage objects readable for visible, attached reports through short-lived signed URLs. If the text saves but attachment fails, the app reports partial success. It does not silently retry the report insert or queue offline writes.
+
+The proposed database and Storage policies are in `docs/scheme.sql`; the executable migration source of truth remains `supabase/migrations/` once created. No migration or remote deployment is included in this frontend/proposal change. The [community contract](../contracts/data-contract.md#community-reports) fixes the RPC, fields, and permission rules. Live use requires applying a reviewed migration from the proposal and provisioning Supabase Auth accounts. Registration, AI analysis, confirm/flag/dispute flows, and moderation tooling remain future work.
+
+## Integration with main
+
+The merged shell preserves the splash entry, Places/Map discovery modes, My Needs recommendations, Community Reports, and the separate help action between Map and Community. Discovery headers scroll when viewport height or large text would otherwise hide content. The help action retains its circular shape at standard text sizes and grows vertically at larger text sizes to keep its label readable.

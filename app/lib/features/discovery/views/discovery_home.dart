@@ -1,3 +1,6 @@
+import 'package:bictc/features/establishments/views/place_details_screen.dart';
+import 'package:bictc/shared/repositories/places_repository.dart';
+import 'package:bictc/shared/repositories/favorites_repository.dart';
 import 'package:bictc/app/design_system.dart';
 import 'package:bictc/features/needs/models/accessibility_need.dart';
 import 'package:bictc/shared/repositories/fixture_places.dart';
@@ -12,8 +15,12 @@ class DiscoveryHome extends StatefulWidget {
     required this.mode,
     required this.selectedNeeds,
     super.key,
+    this.repository,
+    this.favorites,
   });
 
+  final PlacesRepository? repository;
+  final FavoritesRepository? favorites;
   final DiscoveryMode mode;
   final Set<AccessibilityNeed> selectedNeeds;
 
@@ -22,6 +29,36 @@ class DiscoveryHome extends StatefulWidget {
 }
 
 class _DiscoveryHomeState extends State<DiscoveryHome> {
+  late final PlacesRepository _repository =
+      widget.repository ?? createPlacesRepository();
+  late List<SamplePlace> _catalog = _repository.isPreview ? samplePlaces : [];
+  bool _loading = false;
+  String? _loadError;
+  @override
+  void initState() {
+    super.initState();
+    if (!_repository.isPreview) _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final places = await _repository.fetch();
+      if (mounted) setState(() => _catalog = places);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _loadError = 'Places could not be loaded. You may be offline.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
   static const _cities = [
     'All',
     'Metro Manila',
@@ -42,7 +79,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
 
   List<SamplePlace> get _visiblePlaces {
     final query = _search.text.trim().toLowerCase();
-    final places = samplePlaces.where((place) {
+    final places = _catalog.where((place) {
       return (_city == 'All' || place.city == _city) &&
           (_status == null || place.status == _status) &&
           (query.isEmpty ||
@@ -69,13 +106,29 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
   @override
   Widget build(BuildContext context) {
     final places = _visiblePlaces;
-    return Column(
-      children: [
-        _header(),
-        _cityFilters(),
-        _statusFilters(),
-        _needsContext(),
-        Expanded(
+    return CustomScrollView(
+      slivers: [
+        if (_loading)
+          const SliverToBoxAdapter(
+            child: LinearProgressIndicator(semanticsLabel: 'Loading places'),
+          ),
+        if (_loadError != null)
+          SliverToBoxAdapter(
+            child: Column(
+              children: [
+                Text(_loadError!),
+                TextButton(
+                  onPressed: _loading ? null : _load,
+                  child: const Text('Retry places'),
+                ),
+              ],
+            ),
+          ),
+        SliverToBoxAdapter(child: _header()),
+        SliverToBoxAdapter(child: _cityFilters()),
+        SliverToBoxAdapter(child: _statusFilters()),
+        SliverToBoxAdapter(child: _needsContext()),
+        SliverFillRemaining(
           child: widget.mode == DiscoveryMode.places
               ? _placeList(places)
               : _fullMap(places),
@@ -208,7 +261,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
   );
 
   Widget _statusFilters() {
-    final cityPlaces = samplePlaces.where(
+    final cityPlaces = _catalog.where(
       (place) => _city == 'All' || place.city == _city,
     );
     final filters = <PlaceStatus?>[null, ...PlaceStatus.values];
@@ -256,7 +309,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       tooltip: status == null
           ? 'Show all statuses'
-          : '${status.label}: ${cityPlaces.where((place) => place.status == status).length} sample places',
+          : '${status.label}: ${cityPlaces.where((place) => place.status == status).length} places',
     );
   }
 
@@ -441,7 +494,7 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${place.reports} sample reports',
+                          '${place.reports} ${place.isSample ? 'sample reports' : 'reports'}',
                           style: const TextStyle(
                             color: AppColors.muted,
                             fontSize: 11,
@@ -637,56 +690,10 @@ class _DiscoveryHomeState extends State<DiscoveryHome> {
   }
 
   void _showPlace(SamplePlace place) {
-    final matches = _matchCount(place);
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(place.name, style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 4),
-              Text(
-                '${place.category} · ${place.area}',
-                style: const TextStyle(color: AppColors.muted),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 6,
-                runSpacing: 5,
-                children: [
-                  _statusBadge(place.status),
-                  if (widget.selectedNeeds.isNotEmpty) _matchBadge(matches),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(place.address)),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                '${place.reports} sample reports · Updated ${place.updated}',
-                style: const TextStyle(color: AppColors.muted),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Recommendation matches are based on sample feature tags. Check current, detailed evidence before planning a visit.',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
-              ),
-            ],
-          ),
-        ),
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) =>
+            PlaceDetailsScreen(place: place, favorites: widget.favorites),
       ),
     );
   }

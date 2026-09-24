@@ -50,13 +50,57 @@ When a shared data contract and backend read model exist, replace the fixture so
 
 ## Run and check
 
+### Supabase connection
+
+An ignored `.env` file is included locally. On another checkout, copy `.env.example` to `.env`. In the Supabase project's **Connect** panel, find the Project URL and publishable key, then fill in:
+
+```dotenv
+SUPABASE_URL=https://your-project-ref.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_your_key
+```
+
+Use the publishable key, never a secret/service-role key or database password. This setup requires the modern `sb_publishable_...` format. Build-time values are visible in the compiled app; `.env` keeps configuration out of Git, not out of the client.
+
+From `app/`, run:
+
+```sh
+flutter run -d chrome --dart-define-from-file=.env
+flutter run -d YOUR_PHONE_ID --dart-define-from-file=.env
+flutter build apk --debug --dart-define-from-file=.env
+```
+
+Both values blank (or running without the flag) keeps the sample-data preview available. Partial or malformed values show a startup failure; check both values and rebuild. Changing `.env` requires stopping and restarting the app, not hot reload. The file is consumed by Flutter at build time and is not bundled as an asset.
+
+The client initializes before the app shell appears. Community reports and email/password sign-in use repository adapters when configured. Map fixtures and More destinations remain unchanged. Live reports require the proposed schema to be deployed first. No tables or policies are created by startup. Live connectivity and authentication require a real project and are not verified by initialization alone. See [the contract](../contracts/data-contract.md) and [Phase 1 flow](../docs/project-structure-and-flow.md#more-menu-and-supabase-flow).
+
+Reference: [Supabase Flutter quickstart](https://supabase.com/docs/guides/getting-started/quickstarts/flutter).
+
+### Local checks
+
 From `app/`:
 
 ```sh
 flutter pub get
 flutter run
+flutter run -d chrome
 flutter analyze
 flutter test
 ```
 
-The root `.flutter/` directory is the local Flutter SDK checkout, not product code.
+The local Flutter SDK is installed at `.tools/flutter/` in this workspace. From `app/`, use `..\.tools\flutter\bin\flutter.bat run -d chrome` if Flutter is not on PATH. SDK checkouts are not product code.
+
+### Community reports
+
+Guests browse/filter visible reports. Existing signed-in accounts can publish an observation, attach one JPEG/PNG/WebP photo up to 5 MiB, and mark reports helpful. Sign-in does not verify the report's evidence. The module uses `supabase_flutter` 2.17.2 and `image_picker` 1.2.3. Gallery selection works on the existing Android and web targets; adding an iOS target also requires the photo-library usage description documented by image_picker.
+
+Deploy the reviewed SQL from `docs/scheme.sql` through Supabase migrations before using live reports. The proposal has not been applied remotely. With no Supabase configuration, the feed displays labeled read-only sample data. Photo/HTTP integration still needs a smoke test on a configured Supabase project and physical device.
+
+The proposed permissions can be tested without a remote project using PGlite (PostgreSQL WASM). From the repository root in PowerShell:
+
+```powershell
+$policyCheck = Join-Path $env:TEMP 'cmu-community-policy-check'
+npm install --prefix $policyCheck @electric-sql/pglite --no-audit --no-fund
+node docs/tests/community-policies.mjs $policyCheck
+```
+
+This harness executes the actual schema proposal with minimal Auth/Storage schema stubs. It checks RLS/grants and the feed RPC; it does not replace testing Supabase Auth, signed URLs, Storage API size/MIME checks, or upload behavior on a real project.

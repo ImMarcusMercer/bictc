@@ -1,37 +1,84 @@
+import 'package:bictc/features/favorites/views/favorites_screen.dart';
+import 'package:bictc/features/settings/views/settings_screen.dart';
+import 'package:bictc/shared/repositories/favorites_repository.dart';
+import 'package:bictc/shared/repositories/local_store.dart';
+import 'package:bictc/shared/repositories/preferences_repository.dart';
+import 'package:bictc/shared/repositories/places_repository.dart';
+import 'package:bictc/shared/repositories/reports_repository.dart';
 import 'package:bictc/features/discovery/views/discovery_home.dart';
 import 'package:bictc/features/needs/models/accessibility_need.dart';
 import 'package:bictc/features/needs/views/accessibility_needs_screen.dart';
+import 'package:bictc/features/assistance/views/voice_help_sheet.dart';
+import 'package:bictc/features/navigation/widgets/help_navigation_bar.dart';
+import 'package:bictc/features/reports/views/community_reports.dart';
 import 'package:flutter/material.dart';
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  const MainShell({
+    super.key,
+    this.preferences,
+    this.store,
+    this.account,
+    this.places,
+    this.favorites,
+  });
+  final PreferencesRepository? preferences;
+  final LocalStore? store;
+  final ReportsRepository? account;
+  final PlacesRepository? places;
+  final FavoritesRepository? favorites;
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
+  late final LocalStore _store = widget.store ?? DeviceLocalStore();
+  late final PreferencesRepository _preferences =
+      widget.preferences ?? PreferencesRepository(_store);
+  late final ReportsRepository _account =
+      widget.account ?? createReportsRepository();
+  late final PlacesRepository _places =
+      widget.places ?? createPlacesRepository();
+  late final FavoritesRepository _favorites =
+      widget.favorites ?? createFavoritesRepository(_account, _store);
+  @override
+  void initState() {
+    super.initState();
+    _preferences.load();
+    _favorites.initialize();
+  }
+
+  @override
+  void dispose() {
+    if (widget.favorites == null) _favorites.dispose();
+    if (widget.account == null) _account.dispose();
+    if (widget.preferences == null) _preferences.dispose();
+    super.dispose();
+  }
+
   int _selectedIndex = 0;
   Set<AccessibilityNeed> _selectedNeeds = {};
+  bool _helpSheetOpen = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _selectedIndex == 2
-          ? AppBar(title: const Text('Community'))
-          : null,
       body: _selectedIndex < 2
           ? SafeArea(
               child: DiscoveryHome(
+                repository: _places,
+                favorites: _favorites,
                 mode: _selectedIndex == 0
                     ? DiscoveryMode.places
                     : DiscoveryMode.map,
                 selectedNeeds: _selectedNeeds,
               ),
             )
-          : const Center(child: Text('Community screen')),
-      bottomNavigationBar: NavigationBar(
+          : CommunityReports(repository: _account),
+      bottomNavigationBar: HelpNavigationBar(
         selectedIndex: _selectedIndex,
+        onHelpRequested: _requestHelp,
         onDestinationSelected: (index) {
           if (index == 3) {
             _showMoreMenu();
@@ -40,26 +87,25 @@ class _MainShellState extends State<MainShell> {
 
           setState(() => _selectedIndex = index);
         },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.place_outlined),
-            selectedIcon: Icon(Icons.place),
-            label: 'Places',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
-            label: 'Map',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            selectedIcon: Icon(Icons.people),
-            label: 'Community',
-          ),
-          NavigationDestination(icon: Icon(Icons.menu), label: 'More'),
-        ],
       ),
     );
+  }
+
+  Future<void> _requestHelp() async {
+    if (_helpSheetOpen) return;
+    _helpSheetOpen = true;
+    try {
+      await showModalBottomSheet<void>(
+        context: context,
+        showDragHandle: true,
+        isScrollControlled: true,
+        useSafeArea: true,
+        constraints: const BoxConstraints(maxWidth: 520),
+        builder: (context) => const VoiceHelpSheet(),
+      );
+    } finally {
+      _helpSheetOpen = false;
+    }
   }
 
   Future<void> _showMoreMenu() async {
@@ -85,7 +131,9 @@ class _MainShellState extends State<MainShell> {
 
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (context) => _EmptyScreen(title: destination),
+        builder: (context) => destination == 'Favorites'
+            ? FavoritesScreen(repository: _favorites, session: _account)
+            : SettingsScreen(preferences: _preferences, session: _account),
       ),
     );
   }
@@ -121,7 +169,7 @@ class _MoreMenu extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
                 child: Text(
-                  'AccessPH v1.0 - For PWDs across the Philippines',
+                  'AccessPH v0.1.0 - For PWDs across the Philippines',
                   style: TextStyle(fontSize: 12),
                 ),
               ),
@@ -158,20 +206,6 @@ class _MoreMenuItem extends StatelessWidget {
       title: Text(label),
       trailing: const Icon(Icons.chevron_right),
       onTap: onTap,
-    );
-  }
-}
-
-class _EmptyScreen extends StatelessWidget {
-  const _EmptyScreen({required this.title});
-
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title screen')),
     );
   }
 }

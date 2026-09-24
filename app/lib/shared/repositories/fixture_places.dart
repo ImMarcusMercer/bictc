@@ -6,6 +6,7 @@ enum PlaceStatus { accessible, partial, barrier, unknown }
 
 class SamplePlace {
   const SamplePlace({
+    this.id,
     required this.name,
     required this.category,
     required this.city,
@@ -18,6 +19,11 @@ class SamplePlace {
     required this.icon,
     required this.supportedNeeds,
   });
+
+  /// Null for visual fixtures; only real catalog UUIDs may be synced.
+  final String? id;
+  bool get isSample => id == null;
+  String get favoriteKey => id ?? 'sample:$city:$name';
 
   final String name;
   final String category;

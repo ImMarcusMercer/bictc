@@ -1,1 +1,6 @@
 .flutter/
+/GIT/
+/.tools/
+.env
+.env.*
+!.env.example
