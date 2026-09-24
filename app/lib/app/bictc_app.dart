@@ -14,13 +14,18 @@ class BictcApp extends StatefulWidget {
 }
 
 class _BictcAppState extends State<BictcApp> {
+  static const _minimumSplashDuration = Duration(milliseconds: 1200);
+
   late final AccessibilityNeedsStore _needsStore =
       widget.needsStore ?? SharedPreferencesAccessibilityNeedsStore();
   late AccessibilityNeedsPreferences _needsPreferences;
 
   Future<void> _initialize() async {
+    final minimumDisplay = Future<void>.delayed(_minimumSplashDuration);
     await WidgetsBinding.instance.endOfFrame;
-    _needsPreferences = await _needsStore.load();
+    final needsPreferences = await _needsStore.load();
+    await minimumDisplay;
+    _needsPreferences = needsPreferences;
   }
 
   @override

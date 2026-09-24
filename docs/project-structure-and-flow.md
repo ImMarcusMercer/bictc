@@ -50,7 +50,7 @@ This is a **target layout**; create folders as working files are added. The exis
 
 | Section | User action | Information to show |
 | --- | --- | --- |
-| Splash / Startup | Open the app while required startup work completes | App identity, a calm non-numeric loading state, and an accessible retry state if startup fails; no sign-in or permission prompt |
+| Splash / Startup | Open the app while required startup work completes | App identity, a calm non-numeric loading state shown for at least 1.2 seconds, and an accessible retry state if startup fails; no sign-in or permission prompt |
 | Needs | Select practical access requirements on first launch or reopen My Needs from More | Locally saved selected needs and a way to change them later; do not infer a diagnosis or require an account |
 | Places / Map | Search and filter either a card list or a full map | The same city, status, and selected-needs context in both tabs; recommendation matches stay separate from evidence status, and Places works without location permission |
 | Establishment | Open a place | Address, offered services, evidence summary, and last observation date |

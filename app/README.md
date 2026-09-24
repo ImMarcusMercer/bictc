@@ -34,7 +34,7 @@ The splash screen is the app's entry screen, followed by the Places and Map disc
 
 [`lib/features/splash/views/splash_screen.dart`](lib/features/splash/views/splash_screen.dart) owns the startup presentation and transition. It displays the accessibility/location logo, **Access Able PH**, the **Accessibility within reach** tagline, and indeterminate circular and linear progress indicators with screen-reader labels. The layout scrolls when needed and constrains its width on larger displays.
 
-The splash stays visible only while its injected startup task is pending. If startup fails, it announces an error and offers a retry. The current startup task waits for Flutter's first rendered frame and loads the locally saved accessibility needs. A first launch opens My Accessibility Needs after the splash; later launches restore the saved needs and open Places without an artificial delay. Add Supabase, session, or other required configuration to that task when those integrations exist; do not show a fake percentage.
+The splash stays visible for at least 1.2 seconds while its startup task runs, making the loading state perceptible even when local work finishes immediately. Slow startup work keeps it visible longer. If startup fails, it announces an error and offers a retry. The current task waits for Flutter's first rendered frame and loads the locally saved accessibility needs. A first launch opens My Accessibility Needs after the splash; later launches restore the saved needs and open Places. Add Supabase, session, or other required configuration to that task when those integrations exist; keep the progress indicators indeterminate rather than showing a fabricated percentage.
 
 ## Places, Map, and needs implementation
 

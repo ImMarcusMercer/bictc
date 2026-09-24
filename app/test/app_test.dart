@@ -14,6 +14,12 @@ void main() {
     expect(find.text('My Accessibility Needs'), findsNothing);
 
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.text('Access Able PH'), findsOneWidget);
+    expect(find.text('My Accessibility Needs'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 600));
     await tester.pump();
 
     expect(find.text('Access Able PH'), findsNothing);
