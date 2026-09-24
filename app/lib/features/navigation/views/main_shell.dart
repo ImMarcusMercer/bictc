@@ -21,12 +21,18 @@ class MainShell extends StatefulWidget {
     this.account,
     this.places,
     this.favorites,
+    this.initialNeeds = const {},
+    this.showNeedsOnLaunch = false,
+    this.onNeedsSaved,
   });
   final PreferencesRepository? preferences;
   final LocalStore? store;
   final ReportsRepository? account;
   final PlacesRepository? places;
   final FavoritesRepository? favorites;
+  final Set<AccessibilityNeed> initialNeeds;
+  final bool showNeedsOnLaunch;
+  final Future<void> Function(Set<AccessibilityNeed>)? onNeedsSaved;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -58,11 +64,20 @@ class _MainShellState extends State<MainShell> {
   }
 
   int _selectedIndex = 0;
-  Set<AccessibilityNeed> _selectedNeeds = {};
+  late Set<AccessibilityNeed> _selectedNeeds = {...widget.initialNeeds};
+  late bool _showNeedsOnLaunch = widget.showNeedsOnLaunch;
   bool _helpSheetOpen = false;
 
   @override
   Widget build(BuildContext context) {
+    if (_showNeedsOnLaunch) {
+      return AccessibilityNeedsScreen(
+        initialNeeds: _selectedNeeds,
+        onSaved: _saveNeeds,
+        popOnSave: false,
+      );
+    }
+
     return Scaffold(
       body: _selectedIndex < 2
           ? SafeArea(
@@ -122,7 +137,7 @@ class _MainShellState extends State<MainShell> {
         MaterialPageRoute<void>(
           builder: (context) => AccessibilityNeedsScreen(
             initialNeeds: _selectedNeeds,
-            onSaved: (needs) => setState(() => _selectedNeeds = needs),
+            onSaved: _saveNeeds,
           ),
         ),
       );
@@ -136,6 +151,15 @@ class _MainShellState extends State<MainShell> {
             : SettingsScreen(preferences: _preferences, session: _account),
       ),
     );
+  }
+
+  Future<void> _saveNeeds(Set<AccessibilityNeed> needs) async {
+    await widget.onNeedsSaved?.call(needs);
+    if (!mounted) return;
+    setState(() {
+      _selectedNeeds = {...needs};
+      _showNeedsOnLaunch = false;
+    });
   }
 }
 

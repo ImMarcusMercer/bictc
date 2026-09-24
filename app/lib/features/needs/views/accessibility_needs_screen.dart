@@ -6,11 +6,13 @@ class AccessibilityNeedsScreen extends StatefulWidget {
   const AccessibilityNeedsScreen({
     required this.initialNeeds,
     required this.onSaved,
+    this.popOnSave = true,
     super.key,
   });
 
   final Set<AccessibilityNeed> initialNeeds;
-  final ValueChanged<Set<AccessibilityNeed>> onSaved;
+  final Future<void> Function(Set<AccessibilityNeed>) onSaved;
+  final bool popOnSave;
 
   @override
   State<AccessibilityNeedsScreen> createState() =>
@@ -19,6 +21,8 @@ class AccessibilityNeedsScreen extends StatefulWidget {
 
 class _AccessibilityNeedsScreenState extends State<AccessibilityNeedsScreen> {
   late final Set<AccessibilityNeed> _selected = {...widget.initialNeeds};
+  var _isSaving = false;
+  var _saveFailed = false;
 
   void _toggle(AccessibilityNeed need) {
     setState(() {
@@ -26,9 +30,23 @@ class _AccessibilityNeedsScreenState extends State<AccessibilityNeedsScreen> {
     });
   }
 
-  void _save() {
-    widget.onSaved({..._selected});
-    Navigator.pop(context);
+  Future<void> _save() async {
+    setState(() {
+      _isSaving = true;
+      _saveFailed = false;
+    });
+
+    try {
+      await widget.onSaved({..._selected});
+      if (!mounted || !widget.popOnSave) return;
+      Navigator.pop(context);
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _saveFailed = true;
+      });
+    }
   }
 
   @override
@@ -158,7 +176,7 @@ class _AccessibilityNeedsScreenState extends State<AccessibilityNeedsScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'No account is required. Your selections stay in this app session and are used only to personalize discovery.',
+                      'No account is required. Your selections are saved on this device and used only to personalize discovery.',
                       style: TextStyle(color: AppColors.muted, fontSize: 12),
                     ),
                   ),
@@ -170,10 +188,39 @@ class _AccessibilityNeedsScreenState extends State<AccessibilityNeedsScreen> {
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(16),
-        child: FilledButton.icon(
-          onPressed: _save,
-          icon: const Icon(Icons.save_outlined),
-          label: const Text('Save My Needs'),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_saveFailed) ...[
+              Semantics(
+                key: Key('save-needs-error'),
+                container: true,
+                liveRegion: true,
+                label: 'Could not save your needs. Please try again.',
+                child: const ExcludeSemantics(
+                  child: Text(
+                    'Could not save your needs. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.barrier),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _isSaving ? null : _save,
+                icon: _isSaving
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_outlined),
+                label: Text(_isSaving ? 'Saving...' : 'Save My Needs'),
+              ),
+            ),
+          ],
         ),
       ),
     );

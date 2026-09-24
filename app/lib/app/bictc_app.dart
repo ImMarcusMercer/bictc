@@ -1,4 +1,5 @@
 import 'package:bictc/features/navigation/views/main_shell.dart';
+import 'package:bictc/features/needs/data/accessibility_needs_store.dart';
 import 'package:bictc/features/splash/views/splash_screen.dart';
 import 'package:bictc/app/design_system.dart';
 import 'package:bictc/shared/repositories/local_store.dart';
@@ -6,8 +7,9 @@ import 'package:bictc/shared/repositories/preferences_repository.dart';
 import 'package:flutter/material.dart';
 
 class BictcApp extends StatefulWidget {
-  const BictcApp({super.key, this.localStore});
+  const BictcApp({super.key, this.localStore, this.needsStore});
   final LocalStore? localStore;
+  final AccessibilityNeedsStore? needsStore;
   @override
   State<BictcApp> createState() => _BictcAppState();
 }
@@ -15,10 +17,24 @@ class BictcApp extends StatefulWidget {
 class _BictcAppState extends State<BictcApp> {
   late final LocalStore _store = widget.localStore ?? DeviceLocalStore();
   late final PreferencesRepository _preferences = PreferencesRepository(_store);
+  late final AccessibilityNeedsStore _needsStore =
+      widget.needsStore ?? SharedPreferencesAccessibilityNeedsStore();
+  late AccessibilityNeedsPreferences _needsPreferences;
+
   @override
   void initState() {
     super.initState();
     _preferences.load();
+  }
+
+  static const _minimumSplashDuration = Duration(milliseconds: 1200);
+
+  Future<void> _initialize() async {
+    final minimumDisplay = Future<void>.delayed(_minimumSplashDuration);
+    await WidgetsBinding.instance.endOfFrame;
+    final needsPreferences = await _needsStore.load();
+    await minimumDisplay;
+    _needsPreferences = needsPreferences;
   }
 
   @override
@@ -61,8 +77,16 @@ class _BictcAppState extends State<BictcApp> {
         );
       },
       home: SplashScreen(
-        initialize: () => WidgetsBinding.instance.endOfFrame,
-        destination: MainShell(preferences: _preferences, store: _store),
+        initialize: _initialize,
+        destination: Builder(
+          builder: (context) => MainShell(
+      preferences: _preferences,
+      store: _store,
+            initialNeeds: _needsPreferences.needs,
+            showNeedsOnLaunch: !_needsPreferences.onboardingCompleted,
+            onNeedsSaved: _needsStore.save,
+          ),
+        ),
       ),
     ),
   );
